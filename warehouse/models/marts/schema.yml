@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: One row per customer. Row-level security on region; name, email and phone are PII.
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: region
+        data_tests:
+          - accepted_values:
+              arguments: {values: ["AMER", "EMEA", "APAC"]}
+      - name: segment
+        data_tests:
+          - accepted_values:
+              arguments: {values: ["Enterprise", "Mid-Market", "SMB"]}
+      - name: email
+        meta: {classification: pii}
+      - name: phone
+        meta: {classification: pii}
+      - name: customer_name
+        meta: {classification: pii}
+
+  - name: dim_products
+    columns:
+      - name: product_id
+        data_tests: [unique, not_null]
+      - name: category
+        data_tests:
+          - accepted_values:
+              arguments: {values: ["Hardware", "Software", "Services", "Support"]}
+
+  - name: fct_order_lines
+    description: One row per order line. Row-level security on region.
+    data_tests:
+      - unique_combination:
+          arguments: {columns: ["order_id", "line_number"]}
+    columns:
+      - name: customer_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_customers'), field: customer_id}
+      - name: product_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_products'), field: product_id}
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments: {values: ["completed", "returned", "cancelled", "open"]}
+      - name: net_amount
+        data_tests: [not_null]

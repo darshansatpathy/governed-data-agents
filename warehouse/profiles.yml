@@ -1,0 +1,12 @@
+governed_warehouse:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('GDA_DB_HOST', '127.0.0.1') }}"
+      port: "{{ env_var('GDA_DB_PORT', '5432') | int }}"
+      user: "{{ env_var('GDA_DB_USER', 'postgres') }}"
+      password: "{{ env_var('GDA_DB_PASSWORD', '') }}"
+      dbname: "{{ env_var('GDA_DB_NAME', 'gda_wh') }}"
+      schema: public
+      threads: 4

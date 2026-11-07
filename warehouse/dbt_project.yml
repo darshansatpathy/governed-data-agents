@@ -1,0 +1,34 @@
+name: governed_warehouse
+version: "0.1.0"
+config-version: 2
+profile: governed_warehouse
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+clean-targets: ["target", "dbt_packages", "logs"]
+
+seeds:
+  governed_warehouse:
+    +schema: raw
+    raw_customers:
+      +column_types: {signup_date: date}
+    raw_orders:
+      +column_types: {order_date: date}
+    raw_order_items:
+      +column_types: {unit_price: "numeric(12,2)", discount_pct: "numeric(4,2)"}
+    raw_products:
+      +column_types: {list_price: "numeric(12,2)"}
+
+models:
+  governed_warehouse:
+    staging:
+      +schema: staging
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
+
+flags:
+  send_anonymous_usage_stats: false

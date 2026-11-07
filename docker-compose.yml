@@ -1,0 +1,12 @@
+# A local PostgreSQL for the warehouse. Then: make install warehouse eval
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_PASSWORD: ci-only
+      POSTGRES_DB: gda_test
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "gda_test"]
+      interval: 2s
+      retries: 20

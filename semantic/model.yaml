@@ -1,0 +1,146 @@
+# The semantic layer: the only things a question can be answered with.
+# Business definitions live here once (what "revenue" excludes, how an order is counted),
+# so every answer uses the same definition whatever the wording of the question.
+
+entities:
+  order_lines:
+    table: marts.fct_order_lines
+    description: One row per order line.
+  customers:
+    table: marts.dim_customers
+    description: One row per customer.
+  products:
+    table: marts.dim_products
+    description: One row per product.
+
+joins:
+  - {from: order_lines, to: customers, keys: [customer_id, customer_id]}
+  - {from: order_lines, to: products, keys: [product_id, product_id]}
+
+measures:
+  revenue:
+    description: Net revenue after discounts, excluding cancelled orders.
+    entity: order_lines
+    agg: sum
+    column: net_amount
+    where: [{field: status, op: not_in, values: [cancelled]}]
+    synonyms: [revenue, net revenue, sales, net sales, turnover]
+    format: currency
+  gross_revenue:
+    description: Revenue before discounts, excluding cancelled orders.
+    entity: order_lines
+    agg: sum
+    column: gross_amount
+    where: [{field: status, op: not_in, values: [cancelled]}]
+    synonyms: [gross revenue, gross sales, list revenue]
+    format: currency
+  discounts:
+    description: Discounts given, excluding cancelled orders.
+    entity: order_lines
+    agg: sum
+    column: discount_amount
+    where: [{field: status, op: not_in, values: [cancelled]}]
+    synonyms: [discounts, discount, discount amount, discounting]
+    format: currency
+  units:
+    description: Units sold, excluding cancelled orders.
+    entity: order_lines
+    agg: sum
+    column: quantity
+    where: [{field: status, op: not_in, values: [cancelled]}]
+    synonyms: [units, units sold, quantity, volume]
+    format: integer
+  orders:
+    description: Distinct orders, excluding cancelled orders.
+    entity: order_lines
+    agg: count_distinct
+    column: order_id
+    where: [{field: status, op: not_in, values: [cancelled]}]
+    synonyms: [orders, order count, number of orders, how many orders]
+    format: integer
+  cancelled_orders:
+    description: Distinct cancelled orders.
+    entity: order_lines
+    agg: count_distinct
+    column: order_id
+    where: [{field: status, op: in, values: [cancelled]}]
+    synonyms: [cancelled orders, cancellations, canceled orders]
+    format: integer
+  buying_customers:
+    description: Distinct customers with at least one order that was not cancelled.
+    entity: order_lines
+    agg: count_distinct
+    column: customer_id
+    where: [{field: status, op: not_in, values: [cancelled]}]
+    synonyms: [buying customers, active customers, customers who bought, number of customers, how many customers]
+    format: integer
+
+metrics:
+  average_order_value:
+    description: Revenue divided by orders.
+    ratio: [revenue, orders]
+    synonyms: [average order value, aov, average order size, revenue per order]
+    format: currency
+  discount_rate:
+    description: Discounts as a share of gross revenue.
+    ratio: [discounts, gross_revenue]
+    synonyms: [discount rate, discount percentage, discount share]
+    format: percent
+
+dimensions:
+  region:
+    entity: order_lines
+    column: region
+    synonyms: [region, regions, geo, geography]
+    values: [AMER, EMEA, APAC]
+  country:
+    entity: customers
+    column: country
+    synonyms: [country, countries, market, markets]
+    values: [United States, Canada, Brazil, Mexico, United Kingdom, Germany, France, United Arab Emirates,
+             India, Japan, Australia, Singapore]
+  segment:
+    entity: customers
+    column: segment
+    synonyms: [segment, segments, customer segment, customer segments]
+    values: [Enterprise, Mid-Market, SMB]
+  channel:
+    entity: order_lines
+    column: channel
+    synonyms: [channel, channels, sales channel, route to market]
+    values: [Direct, Partner, Online]
+  status:
+    entity: order_lines
+    column: status
+    synonyms: [status, order status, statuses]
+    values: [completed, returned, open, cancelled]
+  category:
+    entity: products
+    column: category
+    synonyms: [category, categories, product category, product line, product lines]
+    values: [Hardware, Software, Services, Support]
+  product:
+    entity: products
+    column: product_name
+    synonyms: [product, products, sku, skus, item, items]
+  customer:
+    entity: customers
+    column: customer_name
+    synonyms: [customer, customers, client, clients, account, accounts, customer name, customer names]
+    classification: pii
+  customer_email:
+    entity: customers
+    column: email
+    synonyms: [email, emails, email address, email addresses, customer email, customer emails]
+    classification: pii
+  customer_phone:
+    entity: customers
+    column: phone
+    synonyms: [phone, phone number, phone numbers, telephone]
+    classification: pii
+
+time_dimension:
+  name: order_date
+  entity: order_lines
+  column: order_date
+  grains: [day, week, month, quarter, year]

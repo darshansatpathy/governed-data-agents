@@ -1,0 +1,40 @@
+# Who may ask about what. Measures and dimensions not granted to any of a user's roles are
+# invisible to them: the planner is never told they exist, and the compiler refuses them.
+# Regions are enforced by PostgreSQL row-level security, not by the compiler alone.
+
+limits:
+  max_rows: 500
+  statement_timeout_ms: 5000
+
+roles:
+  analyst:
+    measures: "*"
+    dimensions: [region, country, segment, channel, status, category, product]
+  sales_manager:
+    measures: [revenue, gross_revenue, units, orders, cancelled_orders, buying_customers, average_order_value]
+    dimensions: "*"
+    pii: true
+  finance:
+    measures: "*"
+    dimensions: [region, country, segment, channel, status, category, product]
+  partner_manager:
+    measures: [revenue, units, orders]
+    dimensions: [region, country, channel, category, product]
+
+users:
+  ana:
+    name: Ana (analyst, EMEA)
+    roles: [analyst]
+    regions: [EMEA]
+  raj:
+    name: Raj (sales manager, APAC)
+    roles: [sales_manager]
+    regions: [APAC]
+  gina:
+    name: Gina (finance, global)
+    roles: [finance]
+    regions: [AMER, EMEA, APAC]
+  pat:
+    name: Pat (partner manager, AMER)
+    roles: [partner_manager]
+    regions: [AMER]

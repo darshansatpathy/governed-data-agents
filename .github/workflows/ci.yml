@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ADMIN_DSN: postgresql://postgres:ci-only@localhost:5432/gda_test
+  APP_DSN: postgresql://gda_app:ci-app@localhost:5432/gda_test
+
+jobs:
+  test:
+    name: Lint, types, tests (Python ${{ matrix.python }}, PostgreSQL 17)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: gda_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d gda_test"
+          --health-interval 2s --health-timeout 2s --health-retries 20
+    env:
+      GDA_TEST_DSN: postgresql://gda_app:ci-app@localhost:5432/gda_test
+      GDA_TEST_ADMIN_DSN: postgresql://postgres:ci-only@localhost:5432/gda_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: pip install -e ".[dev,dbt]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy
+      - name: Roles, audit table and the dbt warehouse (seeds, models, data tests, governance test)
+        run: make warehouse
+      - name: Tests with coverage
+        run: pytest --cov --cov-report=term-missing --cov-fail-under=90
+
+  evaluation:
+    name: Evaluation gate (PostgreSQL ${{ matrix.postgres }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ["16", "17"]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}-alpine
+        env:
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: gda_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d gda_test"
+          --health-interval 2s --health-timeout 2s --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev,dbt]"
+      - run: make warehouse
+      - name: Accuracy, access, hostile questions and plans, database enforcement
+        run: gda eval --dsn "$APP_DSN" --admin-dsn "$ADMIN_DSN" --check --report eval-report.md
+      - name: The committed evaluation report is what the code produces
+        run: diff docs/evaluation.md eval-report.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report-pg${{ matrix.postgres }}
+          path: eval-report.md
+
+  package:
+    name: Wheel builds and works outside the repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install build && python -m build
+      - name: Install the wheel in a clean environment and use the bundled semantic layer and policy
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/venv/bin/gda plan "top 5 products by revenue in 2025" --user ana --as-of 2026-01-15
+          /tmp/venv/bin/gda catalog --user pat
+          ! /tmp/venv/bin/gda plan "revenue by customer email" --user ana
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dbt]" pip-audit
+      - run: pip-audit --skip-editable

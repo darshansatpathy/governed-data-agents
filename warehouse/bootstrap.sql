@@ -20,6 +20,10 @@ $$;
 grant gda_reader to gda_app with inherit false, set true;
 grant gda_reader_pii to gda_app with inherit false, set true;
 
+-- The marts schema exists before dbt runs so that readers can be granted usage once.
+create schema if not exists marts;
+grant usage on schema marts to gda_reader, gda_reader_pii;
+
 create schema if not exists audit;
 create table if not exists audit.queries (
     id bigserial primary key,

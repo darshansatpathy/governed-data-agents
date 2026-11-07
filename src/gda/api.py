@@ -27,7 +27,7 @@ def create_app(service: Service, env: Mapping[str, str] | None = None) -> FastAP
     env = dict(os.environ if env is None else env)
     tokens = dict(pair.split("=", 1) for pair in env.get("GDA_API_TOKENS", "").split(",") if "=" in pair)
     header = env.get("GDA_TRUSTED_USER_HEADER", "")
-    app = FastAPI(title="Governed Data Agents", version="0.1.0")
+    app = FastAPI(title="Governed Data Agents", version="0.1.1")
 
     def user(request: Request) -> str:
         auth = request.headers.get("authorization", "")

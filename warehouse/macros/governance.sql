@@ -1,5 +1,7 @@
 {#
-  Applied as a post-hook on every mart. dbt rebuilds tables on each run, so grants and policies
+  Applied as a post-hook on every mart. Usage on the marts schema is granted once, in
+  bootstrap.sql: granting it here from models that build in parallel races on the same catalog
+  row ("tuple concurrently updated"). dbt rebuilds tables on each run, so grants and policies
   are part of the model, not a one-off script that the next run would silently undo.
 
   - gda_reader may read every column except the ones listed as pii.
@@ -11,7 +13,6 @@
 {% macro govern(row_policy=none, pii=[]) %}
   {% set columns = adapter.get_columns_in_relation(this) | map(attribute='name') | list %}
   {% set open_columns = columns | reject('in', pii) | list %}
-  grant usage on schema {{ this.schema }} to gda_reader, gda_reader_pii;
   grant select ({{ open_columns | join(', ') }}) on {{ this }} to gda_reader;
   grant select on {{ this }} to gda_reader_pii;
   {% if row_policy %}

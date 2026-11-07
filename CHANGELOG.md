@@ -4,6 +4,13 @@ All notable changes are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-11-08
+
+### Fixed
+
+- `dbt build` could fail with "tuple concurrently updated" when marts built in parallel each
+  granted usage on the marts schema. The grant now happens once, in `bootstrap.sql`.
+
 ## [0.1.0] - 2026-11-08
 
 ### Added

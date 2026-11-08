@@ -82,7 +82,7 @@ jobs:
         run: gda eval --dsn "$APP_DSN" --admin-dsn "$ADMIN_DSN" --check --report eval-report.md
       - name: The committed evaluation report is what the code produces
         run: diff docs/evaluation.md eval-report.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: eval-report-pg${{ matrix.postgres }}
@@ -105,7 +105,7 @@ jobs:
           /tmp/venv/bin/gda plan "top 5 products by revenue in 2025" --user ana --as-of 2026-01-15
           /tmp/venv/bin/gda catalog --user pat
           ! /tmp/venv/bin/gda plan "revenue by customer email" --user ana
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
